@@ -109,6 +109,15 @@ class Hasher(Pickler):
         try:
             Pickler.save_global(self, obj, **kwargs)
         except pickle.PicklingError:
+            if (
+                obj is type(None)
+                or obj is type(Ellipsis)
+                or obj is type(NotImplemented)
+            ):
+                # These types are not found by name in builtins: let
+                # pickle save them as type(None), type(...), etc.
+                Pickler.save_type(self, obj)
+                return
             Pickler.save_global(self, obj, **kwargs)
             module = getattr(obj, "__module__", None)
             if module == "__main__":

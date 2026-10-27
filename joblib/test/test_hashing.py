@@ -18,6 +18,7 @@ import sys
 import time
 from concurrent.futures import ProcessPoolExecutor
 from decimal import Decimal
+from typing import Optional
 
 from joblib.func_inspect import filter_args
 from joblib.hashing import hash
@@ -263,6 +264,46 @@ def test_bound_cached_methods_hash(tmpdir):
     )
 
 
+def test_hash_singleton_types():
+    # NoneType, ellipsis and NotImplementedType cannot be looked up by name
+    # in builtins, so they cannot be hashed by reference like other classes.
+    singletons = [None, Ellipsis, NotImplemented]
+    type_hashes = [hash(type(singleton)) for singleton in singletons]
+    value_hashes = [hash(singleton) for singleton in singletons]
+    assert len(set(type_hashes + value_hashes)) == 6
+
+
+def test_hash_unpicklable_class_with_metaclass_eq():
+    # A class that compares equal to anything must not be mistaken for one of
+    # the singleton types above.
+    class EqualToAnything(type):
+        def __eq__(cls, other):
+            return True
+
+        __hash__ = type.__hash__
+
+    class Unpicklable(metaclass=EqualToAnything):
+        pass
+
+    with raises(pickle.PicklingError):
+        hash(Unpicklable)
+
+
+def test_cache_function_called_with_optional_type(tmpdir):
+    # Non-regression test for #1363: Optional[int] holds type(None).
+    memory = Memory(location=tmpdir.strpath, verbose=0)
+    calls = []
+
+    @memory.cache
+    def describe(annotation):
+        calls.append(annotation)
+        return repr(annotation)
+
+    assert describe(Optional[int]) == repr(Optional[int])
+    assert describe(Optional[int]) == repr(Optional[int])
+    assert calls == [Optional[int]]
+
+
 @with_numpy
 def test_hash_object_dtype():
     """Make sure that ndarrays with dtype `object' hash correctly."""
@@ -413,6 +454,9 @@ def _generate_seeded_random_values():
             "9e4e9bf9b91890c9734a6111a35e6633",
         ),
         ({"abcde": 123, "sadfas": [-9999, 2, 3]}, "aeda150553d4bb5c69f0e69d51b0e2ef"),
+        # Class hashes below have been generated with joblib 1.0.0
+        (int, "8bb794cba14f5b0290887e3274299666"),
+        (collections.OrderedDict, "ccb0884051fc0d965ec3e0ce58cf2d09"),
     ],
 )
 def test_hashes_stay_the_same(to_hash, expected):
