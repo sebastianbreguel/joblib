@@ -7,7 +7,7 @@ In Development
 - Fix ``joblib.hash`` and ``Memory.cache`` failing with a ``PicklingError`` on
   ``type(None)``, ``type(Ellipsis)`` and ``type(NotImplemented)``, including
   when a cached function receives ``Optional[int]`` as an argument.
-  https://github.com/joblib/joblib/pull/1923
+  https://github.com/joblib/joblib/pull/1924
 
 - Fix the ``ensure_native_byte_order`` parameter of ``numpy_pickle.load``
   to apply correctly to structured NumPy arrays.
