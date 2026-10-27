@@ -18,6 +18,16 @@ from tokenize import open as open_py_source
 
 from .logger import pformat
 
+try:
+    from annotationlib import Format
+except ImportError:  # Python < 3.14
+    _SIGNATURE_KWARGS = {}
+else:
+    # With lazy annotations (PEP 649), inspect.signature evaluates them by
+    # default and raises NameError if one names an undefined object. Only the
+    # parameters are needed here, so keep unresolvable annotations as ForwardRef.
+    _SIGNATURE_KWARGS = {"annotation_format": Format.FORWARDREF}
+
 full_argspec_fields = (
     "args varargs varkw defaults kwonlyargs kwonlydefaults annotations"
 )
@@ -285,7 +295,7 @@ def filter_args(func, ignore_lst, args=(), kwargs=dict()):
                 stacklevel=2,
             )
         return {"*": args, "**": kwargs}
-    arg_sig = inspect.signature(func)
+    arg_sig = inspect.signature(func, **_SIGNATURE_KWARGS)
     arg_names = []
     arg_kwonlyargs = []
     arg_varargs = None
@@ -311,7 +321,7 @@ def filter_args(func, ignore_lst, args=(), kwargs=dict()):
         # func is an instance method, inspect.signature(func) does not
         # include self, we need to fetch it from the class method, i.e
         # func.__func__
-        class_method_sig = inspect.signature(func.__func__)
+        class_method_sig = inspect.signature(func.__func__, **_SIGNATURE_KWARGS)
         self_name = next(iter(class_method_sig.parameters))
         arg_names = [self_name] + arg_names
     # XXX: Maybe I need an inspect.isbuiltin to detect C-level methods, such

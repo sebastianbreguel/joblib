@@ -4,6 +4,11 @@ Release Notes
 In Development
 --------------
 
+- Fix ``Memory.cache`` on Python 3.14 for functions whose annotations name an
+  object that is not defined, which raised ``NameError`` instead of calling
+  the function.
+  https://github.com/joblib/joblib/pull/1923
+
 - Fix the ``ensure_native_byte_order`` parameter of ``numpy_pickle.load``
   to apply correctly to structured NumPy arrays.
   https://github.com/joblib/joblib/pull/1895

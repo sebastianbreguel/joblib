@@ -7,6 +7,8 @@ Test the func_inspect module.
 # License: BSD Style, 3 clauses.
 
 import functools
+import sys
+import textwrap
 
 from joblib.func_inspect import (
     _clean_win_chars,
@@ -17,7 +19,7 @@ from joblib.func_inspect import (
 )
 from joblib.memory import Memory
 from joblib.test.common import with_numpy
-from joblib.testing import fixture, parametrize, raises, warns
+from joblib.testing import fixture, parametrize, raises, skipif, warns
 
 
 ###############################################################################
@@ -235,6 +237,36 @@ def test_filter_args_edge_cases():
     ) == {"a": 1, "kw1": 3}
 
     assert filter_args(func_with_signature, ["b"], (1, 2)) == {"a": 1}
+
+
+@skipif(sys.version_info < (3, 14), reason="Needs lazy annotations (PEP 649).")
+def test_filter_args_unresolvable_annotations(tmpdir):
+    # With lazy annotations, a function whose annotations name an undefined
+    # object can still be called, so filter_args should tolerate them.
+    namespace = {}
+    exec(
+        textwrap.dedent(
+            """
+            def func(x: Undefined, y: Undefined = 1) -> Undefined:
+                return x + y
+
+            class Klass:
+                def method(self, x: Undefined) -> Undefined:
+                    return x
+            """
+        ),
+        namespace,
+    )
+    func = namespace["func"]
+    method = namespace["Klass"]().method
+
+    assert filter_args(func, ["y"], (1,), {"y": 2}) == {"x": 1}
+    assert filter_args(method, [], (1,)) == {"self": method.__self__, "x": 1}
+
+    memory = Memory(location=tmpdir.strpath, verbose=0)
+    cached_func = memory.cache(func)
+    assert cached_func(1) == 2
+    assert cached_func(1) == 2
 
 
 def test_bound_methods():
