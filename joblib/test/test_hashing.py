@@ -277,7 +277,8 @@ def test_hash_unpicklable_class_with_metaclass_eq():
     # A class that compares equal to anything must not be mistaken for one of
     # the singleton types above.
     class EqualToAnything(type):
-        def __eq__(cls, other):
+        # Never called: the fix compares with `is`, not `==`.
+        def __eq__(cls, other):  # pragma: no cover
             return True
 
         __hash__ = type.__hash__
@@ -457,6 +458,10 @@ def _generate_seeded_random_values():
         # Class hashes below have been generated with joblib 1.0.0
         (int, "8bb794cba14f5b0290887e3274299666"),
         (collections.OrderedDict, "ccb0884051fc0d965ec3e0ce58cf2d09"),
+        # Hashes below have been generated with joblib 1.7.dev0
+        (type(None), "acde509a3c955b09c8c94f7f29dbba6f"),
+        (type(Ellipsis), "ad6353374463c18988d22daf34e3d70c"),
+        (type(NotImplemented), "8df63c2001654cd4e3acd55e0cd6090f"),
     ],
 )
 def test_hashes_stay_the_same(to_hash, expected):
